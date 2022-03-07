@@ -14,11 +14,11 @@ def isPositiveDefinite(A):
 def gpr(X_test, theta, X, Y, k):
     Xstar = np.matrix(X_test)
     K = k(X, X, theta)
-    #if isPositiveDefinite(K):
-    #    KK_inv = np.linalg.cholesky(K)
-    #else:
-    #    KK_inv = np.linalg.pinv(K)
-    KK_inv = np.linalg.inv(K)
+    if isPositiveDefinite(K):
+        KK_inv = np.linalg.cholesky(K)
+    else:
+        KK_inv = np.linalg.pinv(K)
+    #KK_inv = np.linalg.inv(K)
     Ky = KK_inv.dot(Y.T)
     mus = [0]*np.shape(Xstar)[0]
     sigs = [0]*np.shape(Xstar)[0]

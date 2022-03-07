@@ -1,7 +1,6 @@
 import numpy as np
 
-def ucb(out, pars, refactor=False):
-    uniqueOptions = 64
+def ucb(out, pars, refactor=False, uniqueOptions = 64):
     if refactor:
         gamma = pars[0]
         beta_star = pars[1]
