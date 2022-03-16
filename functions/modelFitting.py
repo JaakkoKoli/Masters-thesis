@@ -90,22 +90,22 @@ def model(params, subjD, rounds, context, n=26, n2=4, track=True):
 def model2(params, subjD, rounds, context):
     return sum(model(params, subjD, rounds, context, 25, 4, False)[0])
 
-def modelFit(subjD, rounds, context, track=True):
+def modelFit(subjD, rounds, context, track=True, opts={'bounds': [-5,5], 'CMA_cmean': 2, 'tolx': 1e-1, 'maxfevals': 50}):
     if track:
         start = timer()
     
     bounds = [(-5,5), (-5,5)]
     #fit = sco.differential_evolution(model2, bounds, (subjD, rounds, context), disp=track, maxiter=200)
-    xopt, es = cma.fmin2(model2, 2 * [0], 0.5, args=(subjD, rounds, context))
+    xopt, es = cma.fmin2(model2, [-3,0], 0.5, args=(subjD, rounds, context), options=opts)
     tau, beta = np.exp(xopt)
-    lam = model(xopt, subjD, rounds, context, False)[1]
+    nll, lam = model(xopt, subjD, rounds, context, 25, 4, False)
     
     
     if track:
         end = timer()
         print("Fit finished in "+str(round(end - start,2))+"s")
-    return tau, beta, lam
-	
+    return tau, beta, lam, nll
+    
              
 def model_fast(params, subjD, rnd, context, pool, n_grid, track=True):
     from functions.kernels import rbf
@@ -178,50 +178,7 @@ def modelFit_fast(subjD, rnd, context, pool, n_grid, track=True):
         end = timer()
         print("Fit finished in "+str(round(end - start,2))+"s")
     return tau, beta, lams, nlls
-	
-# experimental
-def modelFitGP(subjD, rnd, context, pool, n_grid, pars, n=10, n2=100, track=True):
-    if track:
-        start = timer()
     
-    grid = np.linspace(-5,5,n2)
-    XNew = [(x, y) for y in range(n2) for x in range(n2)]
-    x1 = np.zeros(n, dtype=int)
-    x2 = np.zeros(n, dtype=int)
-    y = np.zeros(n)
-    #location = np.random.randint(0,n2**2)
-    #x1[0] = XNew[location][0]
-    #x2[0] = XNew[location][1]
-    x1[0] = 0
-    x2[0] = int(round(n2*6/8)-1)
-    
-    outs = [0]*n
-    
-    parVec = [pars[1], pars[1], 1, 0.0001]
-    out = 0
-    
-    for i in range(n):
-        y[i] = (sum(model_fast([grid[x1[i]], grid[x2[i]]], subjD, rnd, context, pool, n_grid, False)[0])-100)/-100
-		
-        out = gpr(XNew, parVec, np.matrix(np.column_stack((x1[0:i+1], x2[0:i+1]))), np.matrix(y[0:i+1]), rbf)
-        outs[i]=out
-        utilityVec = ucb(out, [pars[0]], False, n2**2).tolist()[0]
-        
-        if i != n-1:
-            location = [x for x in range(len(utilityVec)) if utilityVec[x] == max(utilityVec)][0]
-            x1[i+1] = XNew[location][0]
-            x2[i+1] = XNew[location][1]
-        
-        if track:
-            print("Choice: " + str(x1[i])+ ", " + str(x2[i])+": "+str(y[i])+" => "+str((-100*y[i])+100))
-            print(str(i+1)+"/"+str(n))
-        
-    if track:
-        end = timer()
-        #clear_output(wait=True)
-        print("Fit finished in "+str(round(end - start,2))+"s")
-    return outs
-	
 def fitMultiple(df, ids, fit_func):   
     res_len = len(ids)*400
     
@@ -241,25 +198,28 @@ def fitMultiple(df, ids, fit_func):
     
     for i in ids:
         participant = df.iloc[i]
-        rounds = int(len(participant["round"])/20)
-        rounds = [participant["round"][x*20] for x in range(rounds)]
+		rounds = [x for x in range(10)]
         for ind, r in enumerate(rounds):
-            tau, beta, lams, nll = fit_func(participant, r, False)
-            
-            for ii in range(20):
-                nlls[cur] = nll[0]
-                contexts[cur] = participant["context"][ind*20]
-                environments[cur] = participant["environment"][ind*20]
-                taus[cur] = tau
-                betas[cur] = beta
-                lambdas[cur] = lams[ii]
-                IDs[cur] = i
-                rnds[cur] = r
-                trials[cur] = ii
-                chosens[cur] = participant["chosen"][ind*20+ii]
-                contextOrders[cur] = participant["contextOrder"][ind*20]
-                cur = cur + 1
-                clear_output(wait=True)
+            for con in ["Spatial", "Conceptual"]:
+                tau, beta, lams, nll = fit_func(participant, [r], con)
+                
+                for ii in range(20):
+                    nlls[cur] = nll[0]
+                    contexts[cur] = participant["context"][ind*20]
+                    environments[cur] = participant["environment"][ind*20]
+                    taus[cur] = tau
+                    betas[cur] = beta
+                    if ii==0:
+                        lambdas[cur] = 0
+                    else:
+                        lambdas[cur] = lams[ii-1]
+                    IDs[cur] = i
+                    rnds[cur] = r
+                    trials[cur] = ii
+                    chosens[cur] = participant["chosen"][ind*20+ii]
+                    contextOrders[cur] = participant["contextOrder"][ind*20]
+                    cur = cur + 1
+                    #clear_output(wait=True)
                 print(str(round(100*cur/res_len, 1)) + "%")
             
     res = pd.DataFrame({"nll": nlls, 

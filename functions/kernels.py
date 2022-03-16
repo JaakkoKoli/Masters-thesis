@@ -20,7 +20,7 @@ def shepard(x1, x2, theta):
     d = np.shape(x1)[1]
     sigma = np.zeros((N1, N2))
     sf = theta[d]
-	p_minowski = theta[d+2]
+    p_minowski = theta[d+2]
     for i in range(d):
         sigma = sigma + ((abs(np.matrix((np.subtract.outer(x1[:,i],x2[:,i]))))**p_minowski)**(1/p_minowski)**p_minowski)/theta[i].T
     if np.array_equal(x1,x2):
