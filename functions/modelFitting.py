@@ -5,7 +5,6 @@ from functions.acquisitionFunctions import *
 import scipy.optimize as sco
 from multiprocess import Pool
 from timeit import default_timer as timer
-import scipy.optimize as sco
 import cma
 
 def model(params, subjD, rounds, context, n=26, n2=4, track=True):
@@ -198,29 +197,32 @@ def fitMultiple(df, ids, fit_func):
     
     for i in ids:
         participant = df.iloc[i]
-		rounds = [x for x in range(10)]
-        for ind, r in enumerate(rounds):
-            for con in ["Spatial", "Conceptual"]:
-                tau, beta, lams, nll = fit_func(participant, [r], con)
-                
-                for ii in range(20):
-                    nlls[cur] = nll[0]
-                    contexts[cur] = participant["context"][ind*20]
-                    environments[cur] = participant["environment"][ind*20]
-                    taus[cur] = tau
-                    betas[cur] = beta
-                    if ii==0:
-                        lambdas[cur] = 0
-                    else:
-                        lambdas[cur] = lams[ii-1]
-                    IDs[cur] = i
-                    rnds[cur] = r
-                    trials[cur] = ii
-                    chosens[cur] = participant["chosen"][ind*20+ii]
-                    contextOrders[cur] = participant["contextOrder"][ind*20]
-                    cur = cur + 1
-                    #clear_output(wait=True)
-                print(str(round(100*cur/res_len, 1)) + "%")
+        for ind in range(20):
+            r = participant["round"][ind*20]
+            con = participant["context"][ind*20]
+            env = participant["environment"][ind*20]
+            ord = participant["contextOrder"][ind*20]
+            tau, beta, lams, nll = fit_func(participant, [r], con)
+            
+            for ii in range(20):
+                contexts[cur] = con
+                environments[cur] = env
+                taus[cur] = tau
+                betas[cur] = beta
+                if ii==0:
+                    lambdas[cur] = 0
+                    nlls[cur] = 0
+                else:
+                    lambdas[cur] = lams[ii-1]
+                    nlls[cur] = nll[ii-1]
+                IDs[cur] = i
+                rnds[cur] = r
+                trials[cur] = ii
+                chosens[cur] = participant["chosen"][ind*20+ii]
+                contextOrders[cur] = ord
+                cur = cur + 1
+                #clear_output(wait=True)
+            print(str(round(100*cur/res_len, 1)) + "%")
             
     res = pd.DataFrame({"nll": nlls, 
                         "context": contexts,

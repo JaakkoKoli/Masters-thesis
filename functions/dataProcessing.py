@@ -5,7 +5,14 @@ import json
 import seaborn
 import matplotlib.pyplot as plt
 from datetime import datetime
+import warnings
 
+def fxn():
+	warnings.warn("deprecated", DeprecationWarning)
+
+with warnings.catch_warnings():
+	warnings.simplefilter("ignore")
+	fxn()
 
 def readData(path="experimentData/full.csv"):
 	rawdata = pd.read_csv(path, sep=",")
