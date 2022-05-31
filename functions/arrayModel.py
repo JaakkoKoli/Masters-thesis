@@ -38,7 +38,7 @@ def model(params, subjD, rounds, context, n=26, n2=4):
             y1 = np.matrix(y[0:i+1])
             
             nLL_lambda = [0]*n
-            vals = np.linspace(0,4,n)
+            vals = np.linspace(0,10,n)
             vals = vals + vals[1]
             for ind, val in enumerate(vals):
                 parVec = [val, val, 1, 0.0001]
@@ -72,15 +72,17 @@ def model(params, subjD, rounds, context, n=26, n2=4):
                 nLL_lambda[ind] = -np.log(p[chosen[i+1]])
             if min(nLL_lambda) < old_min:
                 nll[round_index*19 + i] = min(nLL_lambda)
-                parameters[round_index*20+i] = vals2[[x for x in range(n2) if nLL_lambda[x]==min(nLL_lambda)][0]]
+                parameters[round_index*19+i] = vals2[[x for x in range(n2) if nLL_lambda[x]==min(nLL_lambda)][0]]
             else:
                 nll[round_index*19 + i] = old_min
-                parameters[round_index*20+i] = vals[min_ind]
+                parameters[round_index*19+i] = vals[min_ind]
             
     return nll, parameters
     
 def model2(params, subjD, rounds, context):
-    return sum(model(params, subjD, rounds, context, 40, 4)[0])
+    nlls= model(params, subjD, rounds, context, 60, 6)[0]
+    n = int(len(nlls)/19)
+    return sum([nlls[x*19+18] for x in range(n)])
 
 def modelFit(subjD, rounds, context):
     bounds = [(-5,5), (-5,5)]
@@ -91,8 +93,16 @@ def modelFit(subjD, rounds, context):
     return tau, beta, lam, nll
     
 def modelFitCMA(subjD, rounds, context):
-    opts={'tolx': 1e-2, 'maxfevals': 200, 'verb_log': 0, 'verbose': -9}
-    xopt, es = cma.fmin2(model2, [-3,0], 0.5, args=(subjD, rounds, context), options=opts)
+    opts = opts={'tolx': 1e-2, 'maxfevals': 200, 'verb_log': 0, 'verbose': -9}
+    xopt, es = cma.fmin2(model2, [-3,0], 1.0, args=(subjD, rounds, context), options=opts)
+    tau, beta = np.exp(xopt)
+    nll, lam = model(xopt, subjD, rounds, context, 40, 4)
+    
+    return tau, beta, lam, nll
+
+def modelFitCMA2(subjD, rounds, context):
+    opts = {'maxfevals': 200, 'verb_log': 0, 'verbose': -9}
+    xopt, es = cma.fmin2(model2, [0,0], 1.0, args=(subjD, rounds, context), options=opts)
     tau, beta = np.exp(xopt)
     nll, lam = model(xopt, subjD, rounds, context, 40, 4)
     
